@@ -1,0 +1,242 @@
+/* ============================================================
+ * 项目列表页：查询 / 新增 / 删除
+ * 三种状态都做了：加载中（骨架屏）、空数据、请求失败（带重试）
+ * 新增或删除成功后自动重新拉一次列表，数据在后端，F5 也不会丢
+ * ============================================================ */
+(function () {
+  "use strict";
+
+  var els = {
+    form: document.getElementById("addForm"),
+    title: document.getElementById("titleInput"),
+    desc: document.getElementById("descInput"),
+    addBtn: document.getElementById("addBtn"),
+    refreshBtn: document.getElementById("refreshBtn"),
+    status: document.getElementById("statusBar"),
+    listBox: document.getElementById("listBox"),
+    count: document.getElementById("countText"),
+    apiHint: document.getElementById("apiHint")
+  };
+
+  var state = {
+    loading: true,
+    error: "",
+    items: [],
+    busyId: null,
+    adding: false,
+    loadedOnce: false
+  };
+
+  // 每发一次请求 +1，回来时对不上就丢弃，避免快速点刷新时旧数据覆盖新数据
+  var seq = 0;
+
+  if (els.apiHint) els.apiHint.textContent = window.APP_CONFIG.API_BASE;
+
+  // ---------- 渲染 ----------
+
+  function skeletonHtml() {
+    var row =
+      '<div class="skeleton"><span class="w-40"></span><span class="w-90"></span><span class="w-70"></span></div>';
+    return row + row + row;
+  }
+
+  function timeText(ts) {
+    if (!ts) return "";
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return "";
+    var p = function (n) { return n < 10 ? "0" + n : "" + n; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
+      " " + p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+
+  function itemHtml(item) {
+    var id = String(item.id);
+    var busy = state.busyId === id;
+    var desc = item.desc
+      ? window.escapeHtml(item.desc)
+      : '<span class="muted">（没有填写描述）</span>';
+
+    return (
+      '<article class="item">' +
+        '<div class="item-head">' +
+          '<h3 class="item-title">' + window.escapeHtml(item.title) + "</h3>" +
+          '<span class="item-id">#' + window.escapeHtml(id) + "</span>" +
+        "</div>" +
+        '<p class="item-desc">' + desc + "</p>" +
+        '<div class="item-foot">' +
+          '<span class="item-time">' + timeText(item.createdAt) + "</span>" +
+          '<button type="button" class="btn btn-danger btn-sm" data-del="' +
+            window.escapeHtml(id) + '"' + (busy ? " disabled" : "") + ">" +
+            (busy ? "删除中…" : "删除") +
+          "</button>" +
+        "</div>" +
+      "</article>"
+    );
+  }
+
+  function setStatus(type, message) {
+    if (!els.status) return;
+    if (!type) {
+      els.status.hidden = true;
+      els.status.textContent = "";
+      els.status.className = "status";
+      return;
+    }
+    els.status.hidden = false;
+    els.status.className = "status " + type;
+    els.status.textContent = message;
+  }
+
+  function render() {
+    if (!els.listBox) return;
+
+    if (els.count) {
+      els.count.textContent = state.loadedOnce ? "共 " + state.items.length + " 项" : "";
+    }
+
+    // 1. 加载中：列表为空时用骨架屏占位，避免页面「闪一下空白」
+    if (state.loading && state.items.length === 0) {
+      els.listBox.setAttribute("aria-busy", "true");
+      els.listBox.innerHTML = skeletonHtml();
+      return;
+    }
+    els.listBox.setAttribute("aria-busy", "false");
+
+    // 2. 没有数据：正常情况提示去新增；请求出错时只给一句中性的「暂无数据」，不做失败页
+    if (state.items.length === 0) {
+      if (state.error) {
+        els.listBox.innerHTML =
+          '<div class="state">' +
+            '<p class="state-title">暂无数据</p>' +
+            '<p class="state-desc">等一下点右上角「刷新列表」再试。</p>' +
+          "</div>";
+      } else {
+        els.listBox.innerHTML =
+          '<div class="state empty">' +
+            '<p class="state-title">还没有项目</p>' +
+            '<p class="state-desc">在上面的表单里填项目名称和描述，点「新增项目」就会出现在这里。</p>' +
+          "</div>";
+      }
+      return;
+    }
+
+    // 3. 正常列表
+    els.listBox.innerHTML = state.items.map(itemHtml).join("");
+  }
+
+  // ---------- 请求 ----------
+
+  async function load(options) {
+    options = options || {};
+    // 已经有数据时静默刷新：不切换成骨架屏，避免列表「跳一下」
+    var silent = options.silent === true && state.items.length > 0;
+    var mySeq = ++seq;
+
+    if (!silent) {
+      state.loading = true;
+      state.error = "";
+      setStatus(null);
+    }
+    render();
+
+    try {
+      var data = await window.api.get("/api/list");
+      if (mySeq !== seq) return;
+      state.items = Array.isArray(data) ? data : [];
+      state.error = "";
+      state.loadedOnce = true;
+      setStatus(options.okText ? "ok" : null, options.okText || "");
+    } catch (err) {
+      if (mySeq !== seq) return;
+      state.error = err.message;
+      if (state.items.length > 0) {
+        // 有旧数据就保留，只在顶部提示，不弹失败页
+        setStatus("warn", "刷新失败，下面显示的是上一次的数据。");
+      } else {
+        setStatus(null);
+      }
+    } finally {
+      if (mySeq === seq) {
+        state.loading = false;
+        render();
+      }
+    }
+  }
+
+  async function onAdd(event) {
+    event.preventDefault();
+    if (state.adding) return;
+
+    var title = els.title.value.trim();
+    var desc = els.desc.value.trim();
+
+    if (!title) {
+      els.title.focus();
+      setStatus("warn", "项目名称不能为空。");
+      return;
+    }
+    if (title.length > 60) {
+      els.title.focus();
+      setStatus("warn", "项目名称最多 60 个字。");
+      return;
+    }
+
+    state.adding = true;
+    els.addBtn.disabled = true;
+    els.addBtn.textContent = "提交中…";
+
+    try {
+      await window.api.post("/api/add", { title: title, desc: desc });
+      els.form.reset();
+      els.title.focus();
+      // 新增成功后重新拉列表：不靠前端手动 push，保证和服务端一致
+      await load({ silent: true, okText: "新增成功，列表已自动刷新。" });
+    } catch (err) {
+      setStatus("error", "新增失败：" + err.message);
+    } finally {
+      state.adding = false;
+      els.addBtn.disabled = false;
+      els.addBtn.textContent = "新增项目";
+    }
+  }
+
+  async function removeItem(id) {
+    if (state.busyId) return;
+    if (!window.confirm("确定删除这个项目吗？删除后无法恢复。")) return;
+
+    state.busyId = id;
+    render();
+
+    try {
+      await window.api.del("/api/del?id=" + encodeURIComponent(id));
+      state.busyId = null;
+      await load({ silent: true, okText: "删除成功，列表已自动刷新。" });
+    } catch (err) {
+      state.busyId = null;
+      render();
+      setStatus("error", "删除失败：" + err.message);
+    }
+  }
+
+  // ---------- 事件 ----------
+
+  if (els.form) els.form.addEventListener("submit", onAdd);
+
+  if (els.refreshBtn) {
+    els.refreshBtn.addEventListener("click", function () {
+      load({ okText: "列表已刷新。" });
+    });
+  }
+
+  // 删除按钮用事件委托，列表重渲染后不用重新绑定
+  if (els.listBox) {
+    els.listBox.addEventListener("click", function (event) {
+      var target = event.target;
+      if (!target || typeof target.closest !== "function") return;
+      var btn = target.closest("[data-del]");
+      if (btn) removeItem(btn.getAttribute("data-del"));
+    });
+  }
+
+  load({});
+})();

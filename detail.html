@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目详情 · 前端实训</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-detail">
+<header class="site-header">
+    <h1>前端实训个人主页</h1>
+</header>
+
+<nav class="site-nav">
+    <a href="index.html">首页</a>
+    <a class="active" href="detail.html">项目详情</a>
+    <a href="list.html">查看我的项目</a>
+    <a href="chat.html">AI 对话</a>
+</nav>
+
+<main>
+    <h2 class="page-title">项目详情 · 任务清单</h2>
+    <p class="lead">勾选切换完成状态，数据存在浏览器本地，刷新不丢。</p>
+
+    <div class="task-box">
+        <div class="add-area">
+            <input type="text" id="taskInput" placeholder="输入任务内容，回车或点按钮添加" maxlength="100">
+            <button id="addTaskBtn" class="btn btn-primary" type="button">添加任务</button>
+        </div>
+
+        <div id="taskList" aria-live="polite"></div>
+
+        <div class="task-meta">
+            <span id="taskCount">共 0 项</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="clearDoneBtn">清除已完成</button>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <p>© 2026 前端实训作业</p>
+</footer>
+
+<script src="js/detail.js"></script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 对话 · 前端实训</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chat.css">
+</head>
+<body class="page-chat">
+<header class="site-header">
+    <h1>前端实训个人主页</h1>
+</header>
+
+<nav class="site-nav">
+    <a href="index.html">首页</a>
+    <a href="detail.html">项目详情</a>
+    <a href="list.html">查看我的项目</a>
+    <a class="active" href="chat.html">AI 对话</a>
+</nav>
+
+<main class="chat-main">
+    <div class="chat-head">
+        <div>
+            <h2 class="page-title">AI 对话</h2>
+            <p class="lead">
+                流式输出 · 连续对话 · 服务端转发。API Key 只存在服务器环境变量里，
+                前端代码和浏览器 Network 里都不会出现 Key。
+            </p>
+        </div>
+        <div class="chat-head-actions">
+            <span class="chat-badge" id="contextBadge">0 轮上下文</span>
+            <button class="btn btn-ghost btn-sm" id="clearBtn" type="button">清空对话</button>
+        </div>
+    </div>
+
+    <div class="status" id="chatStatus" role="status" aria-live="polite" hidden></div>
+
+    <section class="chat-window" id="chatWindow" role="log" aria-live="polite" aria-label="对话记录">
+        <div class="chat-message assistant" id="welcomeMessage">
+            <div class="avatar" aria-hidden="true">AI</div>
+            <div class="bubble">
+                <div class="message-text">你好，我是「小豆」，可以帮你梳理前端知识、检查代码和排查报错。也可以让我新增或查询项目清单；真正执行工具时，下方会显示工具名和参数。</div>
+                <div class="bubble-meta">回答由服务端转发，前端只负责接收流式文本</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="tool-panel" id="toolPanel" hidden>
+        <div class="tool-panel-head">
+            <div class="tool-panel-title">
+                <strong>工具调用日志</strong>
+                <span class="tool-count" id="toolCount">0</span>
+                <span class="tool-panel-hint">模型实际执行的操作</span>
+            </div>
+            <button class="tool-toggle" id="toolToggle" type="button" aria-expanded="true">收起</button>
+        </div>
+        <div class="tool-log" id="toolLog" aria-live="polite"></div>
+    </section>
+
+    <div class="chat-compose">
+        <label class="sr-only" for="chatInput">输入问题</label>
+        <textarea
+            id="chatInput"
+            rows="3"
+            maxlength="2000"
+            placeholder="例如：fetch 流式响应怎么逐块读取？按 Enter 发送，Shift + Enter 换行"
+        ></textarea>
+        <div class="compose-foot">
+            <span class="input-hint" id="inputHint">Enter 发送 · Shift + Enter 换行 · 0/2000</span>
+            <div class="compose-actions">
+                <button class="btn btn-primary" id="sendBtn" type="button">发送</button>
+                <button class="btn btn-stop" id="stopBtn" type="button" hidden>停止生成</button>
+            </div>
+        </div>
+    </div>
+
+    <p class="chat-footnote">
+        涉及项目清单时，模型可以调用 <code>add_item</code> / <code>query_items</code>，后端会真实读写
+        <code>data/projects.json</code>；工具名、参数和执行结果都会显示在上方日志里。
+        上下文由服务端自动裁剪，停止生成的那一轮不会写入上下文。
+    </p>
+</main>
+
+<footer class="site-footer">
+    <p>© 2026 前端实训作业</p>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/chat.js"></script>
+</body>
+</html>

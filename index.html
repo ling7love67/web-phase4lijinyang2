@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端实训个人主页</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-home">
+<header class="site-header">
+    <h1>前端实训个人主页</h1>
+</header>
+
+<nav class="site-nav">
+    <a class="active" href="index.html">首页</a>
+    <a href="detail.html">项目详情</a>
+    <a href="list.html">查看我的项目</a>
+    <a href="chat.html">AI 对话</a>
+</nav>
+
+<main>
+    <div class="tab-buttons" role="tablist" aria-label="首页内容切换">
+        <button class="tab-btn active" type="button" role="tab" aria-selected="true" data-panel="intro">自我介绍</button>
+        <button class="tab-btn" type="button" role="tab" aria-selected="false" data-panel="skill">技能栈</button>
+        <button class="tab-btn" type="button" role="tab" aria-selected="false" data-panel="project">第一阶段项目</button>
+    </div>
+
+    <section class="tab-panel show prose" id="intro" role="tabpanel">
+        <h3>自我介绍</h3>
+        <p>我叫李金洋，山东工商学院计算机科学与技术专业学生，正在学习前端开发，掌握 HTML、CSS、JavaScript 基础，练习静态页面开发与简单数据交互。</p>
+    </section>
+
+    <section class="tab-panel prose" id="skill" role="tabpanel">
+        <h3>技能栈</h3>
+        <ul class="skill-list">
+            <li>HTML5 语义化标签与表单</li>
+            <li>CSS3 响应式布局、Flex 与媒体查询</li>
+            <li>原生 JavaScript：DOM 操作、事件委托</li>
+            <li>fetch 请求、Promise / async-await、错误处理</li>
+            <li>Node.js + Express 写接口，JSON 文件做持久化</li>
+        </ul>
+    </section>
+
+    <section class="tab-panel" id="project" role="tabpanel">
+        <div class="list-head">
+            <h3>第一阶段项目</h3>
+            <span class="muted" id="homeCount">正在读取…</span>
+        </div>
+        <p class="muted" style="margin-bottom:12px;">
+            数据来自后端 <code id="homeApi">GET /api/list</code>，和「查看我的项目」页是同一份数据。
+        </p>
+
+        <div id="homeList" aria-live="polite">
+            <div class="state loading">
+                <p class="state-title">项目数据加载中…</p>
+                <p class="state-desc">正在请求接口，请稍候。</p>
+            </div>
+        </div>
+
+        <p style="margin-top:16px;">
+            <a class="btn btn-ghost" href="list.html">去「查看我的项目」新增 / 删除 →</a>
+        </p>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <p>© 2026 前端实训作业</p>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/home.js"></script>
+</body>
+</html>
