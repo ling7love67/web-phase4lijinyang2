@@ -1,0 +1,12 @@
+node_modules/
+npm-debug.log*
+data/*.tmp
+data/*.tmp.*
+.DS_Store
+.vscode/
+
+# 密钥文件：只提交 .env.example，真实 .env 永远不进 Git
+.env
+.env.*
+!.env.example
+*.env

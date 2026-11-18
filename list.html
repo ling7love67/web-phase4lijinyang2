@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查看我的项目 · 前端实训</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="page-list">
+<header class="site-header">
+    <h1>前端实训个人主页</h1>
+</header>
+
+<nav class="site-nav">
+    <a href="index.html">首页</a>
+    <a href="detail.html">项目详情</a>
+    <a class="active" href="list.html">查看我的项目</a>
+    <a href="chat.html">AI 对话</a>
+</nav>
+
+<main>
+    <h2 class="page-title">查看我的项目</h2>
+    <p class="lead">
+        查询 <code>GET /api/list</code> · 新增 <code>POST /api/add</code> · 删除 <code>DELETE /api/del</code>；
+        数据存在服务端，新增或删除后列表会自动刷新，按 F5 也还在。
+    </p>
+    <p class="lead" style="margin-top:-8px;">
+        当前后端：<code id="apiHint">读取中…</code>
+    </p>
+
+    <form class="add-form" id="addForm" autocomplete="off">
+        <input type="text" id="titleInput" name="title" placeholder="项目名称（必填，最多 60 字）" maxlength="60" required>
+        <input type="text" id="descInput" name="desc" placeholder="项目描述（选填，最多 200 字）" maxlength="200">
+        <button type="submit" class="btn btn-primary" id="addBtn">新增项目</button>
+    </form>
+
+    <div class="status" id="statusBar" role="status" aria-live="polite" hidden></div>
+        
+    <div class="search-bar" role="search">
+        <input type="search" id="searchInput"
+               placeholder="搜索项目名称或描述…（空格分隔多个关键词）"
+               maxlength="60" autocomplete="off">
+        <button type="button" class="btn btn-ghost btn-sm" id="clearSearchBtn" hidden>清空</button>
+    </div> 
+    
+    <div class="list-head">
+        <span class="muted">全部项目 <span id="countText"></span></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="refreshBtn">刷新列表</button>
+    </div>
+
+    <div id="listBox" aria-live="polite" aria-busy="false">
+        <div class="state loading">
+            <p class="state-title">项目数据加载中…</p>
+            <p class="state-desc">正在请求 <code>GET /api/list</code>。</p>
+        </div>
+    </div>
+</main>
+
+<footer class="site-footer">
+    <p>© 2026 前端实训作业</p>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/list.js"></script>
+</body>
+</html>

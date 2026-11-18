@@ -97,7 +97,9 @@ main {
 .list-box,
 .task-box,
 .page-title,
-.lead {
+.lead,
+.search-bar 
+{
   max-width: 980px;
 }
 
@@ -225,6 +227,34 @@ h3 {
 }
 
 /* ---------- 列表 ---------- */
+
+/* ---------- 搜索栏 ---------- */
+
+.search-bar {
+  display: flex;
+  flex-wrap: wrap;          /* 窄屏自动换行 */
+  gap: 10px;
+  margin-bottom: 10px;
+  max-width: 980px;         /* 和 .add-form / .item 对齐 */
+}
+
+.search-bar input {
+  font: inherit;
+  font-size: 15px;
+  padding: 9px 12px;
+  border: 1px solid #ccd4de;
+  border-radius: 2px;
+  background: #fff;
+  color: #242424;
+  flex: 1 1 320px;          /* 撑满剩余宽度 */
+  min-width: 0;             /* flex 子项不加这个会被内容撑破 */
+}
+
+.search-bar input:focus {
+  outline: 2px solid rgba(15, 108, 196, .25);
+  outline-offset: 1px;
+  border-color: #0f6cc4;
+}
 
 .list-head {
   display: flex;

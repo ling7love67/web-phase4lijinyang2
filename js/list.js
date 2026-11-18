@@ -15,7 +15,9 @@
     status: document.getElementById("statusBar"),
     listBox: document.getElementById("listBox"),
     count: document.getElementById("countText"),
-    apiHint: document.getElementById("apiHint")
+    apiHint: document.getElementById("apiHint"),
+     search: document.getElementById("searchInput"),        // ★ 必须加
+    clearSearch: document.getElementById("clearSearchBtn") // ★ 必须加
   };
 
   var state = {
@@ -24,7 +26,8 @@
     items: [],
     busyId: null,
     adding: false,
-    loadedOnce: false
+    loadedOnce: false,
+    keyword:""
   };
 
   // 每发一次请求 +1，回来时对不上就丢弃，避免快速点刷新时旧数据覆盖新数据
@@ -74,6 +77,23 @@
     );
   }
 
+    // 判断一条项目是否命中关键词：不区分大小写，空格分隔的多个词要"全部"命中
+  function matchKeyword(item, keyword) {
+    if (!keyword) return true;
+    var words = keyword.toLowerCase().split(/\s+/).filter(Boolean);
+    var text = ((item.title || "") + " " + (item.desc || "")).toLowerCase();
+    return words.every(function (w) {
+      return text.indexOf(w) !== -1;
+    });
+  }
+
+  // 根据当前关键词，从全部数据里挑出要显示的
+  function visibleItems() {
+    return state.items.filter(function (item) {
+      return matchKeyword(item, state.keyword);
+    });
+  }
+
   function setStatus(type, message) {
     if (!els.status) return;
     if (!type) {
@@ -90,9 +110,19 @@
   function render() {
     if (!els.listBox) return;
 
+    var list=visibleItems();
+
     if (els.count) {
-      els.count.textContent = state.loadedOnce ? "共 " + state.items.length + " 项" : "";
+      if(!state.loadedOnce){
+        els.count.textContent="";
+      }else if(!state.keyword){
+        els.count.textContent = "共 " + state.items.length + " 项";
+    }else{
+      //2。搜索时把“找到几条/总共几条”都说清楚，别让人以为数据被删了
+      els.count.textContent = "找到 " + list.length + "项 / 共 " + state.items.length + "项";
     }
+      }
+      
 
     // 1. 加载中：列表为空时用骨架屏占位，避免页面「闪一下空白」
     if (state.loading && state.items.length === 0) {
@@ -121,7 +151,7 @@
     }
 
     // 3. 正常列表
-    els.listBox.innerHTML = state.items.map(itemHtml).join("");
+    els.listBox.innerHTML = list.map(itemHtml).join("");
   }
 
   // ---------- 请求 ----------
@@ -219,6 +249,24 @@
   }
 
   // ---------- 事件 ----------
+
+    if (els.search) {
+    els.search.addEventListener("input", function () {
+      state.keyword = els.search.value.trim();
+      if (els.clearSearch) els.clearSearch.hidden = !state.keyword;
+      render();                      // 本地过滤，直接重渲染，不用发请求
+    });
+  }
+
+  if (els.clearSearch) {
+    els.clearSearch.addEventListener("click", function () {
+      els.search.value = "";
+      state.keyword = "";
+      els.clearSearch.hidden = true;
+     if(els.search) els.search.focus();            // 清空后光标留在输入框里，方便继续搜
+      render();
+    });
+  }
 
   if (els.form) els.form.addEventListener("submit", onAdd);
 
