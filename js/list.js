@@ -150,7 +150,18 @@
       return;
     }
 
-    // 3. 正常列表
+        // 3. 有数据，但被搜索筛空了
+    if (list.length === 0) {
+      els.listBox.innerHTML =
+        '<div class="state empty">' +
+          '<p class="state-title">没有找到匹配的项目</p>' +
+          '<p class="state-desc">换个关键词试试，或者点搜索框右边的「清空」查看全部。</p>' +
+        "</div>";
+      return;
+    }
+
+
+    // 4. 正常列表
     els.listBox.innerHTML = list.map(itemHtml).join("");
   }
 
