@@ -8,7 +8,7 @@
   var countEl = document.getElementById("homeCount");
   var apiEl = document.getElementById("homeApi");
 
-  var state = { loading: false, error: "", items: [], loaded: false };
+  var state = { loading: false, error: "", items: [], loaded: false, offline: false };
   var seq = 0;
 
   if (apiEl) {
@@ -48,7 +48,7 @@
       return;
     }
 
-    countEl.textContent = "共 " + state.items.length + " 项";
+    countEl.textContent = "共 " + state.items.length + " 项" + (state.offline ? "（线上只读）" : "");
     listBox.innerHTML = state.items.map(function (item) {
       return (
         '<article class="item">' +
@@ -74,13 +74,32 @@
       if (mySeq !== seq) return;
       state.items = Array.isArray(data) ? data : [];
       state.loaded = true;
+      state.offline = false;
     } catch (err) {
       if (mySeq !== seq) return;
-      state.error = err.message;
-      state.loaded = false;
+      // 线上静态托管没有后端：退回仓库里的只读演示数据
+      try {
+        var res = await fetch("data/projects.json", { cache: "no-cache" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        var items = await res.json();
+        if (mySeq !== seq) return;
+        state.items = Array.isArray(items) ? items : [];
+        state.error = "";
+        state.loaded = true;
+        state.offline = true;
+      } catch (e2) {
+        if (mySeq !== seq) return;
+        state.error = err.message;
+        state.loaded = false;
+      }
     } finally {
       if (mySeq === seq) {
         state.loading = false;
+        if (apiEl) {
+          apiEl.textContent = state.offline
+            ? "线上只读演示数据（data/projects.json）；本地 npm start 后可增删"
+            : "GET /api/list（" + window.APP_CONFIG.API_BASE + "）";
+        }
         render();
       }
     }

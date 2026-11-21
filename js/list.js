@@ -27,7 +27,8 @@
     busyId: null,
     adding: false,
     loadedOnce: false,
-    keyword:""
+    keyword:"",
+    readonly: false
   };
 
   // 每发一次请求 +1，回来时对不上就丢弃，避免快速点刷新时旧数据覆盖新数据
@@ -69,7 +70,8 @@
         '<div class="item-foot">' +
           '<span class="item-time">' + timeText(item.createdAt) + "</span>" +
           '<button type="button" class="btn btn-danger btn-sm" data-del="' +
-            window.escapeHtml(id) + '"' + (busy ? " disabled" : "") + ">" +
+            window.escapeHtml(id) + '"' + (busy || state.readonly ? " disabled" : "") +
+            (state.readonly ? ' title="线上只读演示，本地启动后端后可删除"' : "") + ">" +
             (busy ? "删除中…" : "删除") +
           "</button>" +
         "</div>" +
@@ -92,6 +94,32 @@
     return state.items.filter(function (item) {
       return matchKeyword(item, state.keyword);
     });
+  }
+
+  // 线上静态托管没有后端时，退回仓库里的只读演示数据
+  async function loadStaticData() {
+    try {
+      var res = await fetch("data/projects.json", { cache: "no-cache" });
+      if (!res.ok) return false;
+      var items = await res.json();
+      if (!Array.isArray(items)) return false;
+      state.items = items;
+      state.readonly = true;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // 只读模式下锁住「新增」和「删除」，避免点了必然失败
+  function applyReadonly() {
+    var ro = state.readonly;
+    if (els.title) els.title.disabled = ro;
+    if (els.desc) els.desc.disabled = ro;
+    if (els.addBtn) {
+      els.addBtn.disabled = ro || state.adding;
+      els.addBtn.textContent = ro ? "线上只读" : (state.adding ? "提交中…" : "新增项目");
+    }
   }
 
   function setStatus(type, message) {
@@ -186,19 +214,30 @@
       state.items = Array.isArray(data) ? data : [];
       state.error = "";
       state.loadedOnce = true;
+      state.readonly = false;
       setStatus(options.okText ? "ok" : null, options.okText || "");
     } catch (err) {
       if (mySeq !== seq) return;
-      state.error = err.message;
-      if (state.items.length > 0) {
-        // 有旧数据就保留，只在顶部提示，不弹失败页
-        setStatus("warn", "刷新失败，下面显示的是上一次的数据。");
+      // 线上是静态托管，没有后端 —— 退回仓库里的只读演示数据
+      var ok = await loadStaticData();
+      if (mySeq !== seq) return;
+      if (ok) {
+        state.error = "";
+        state.loadedOnce = true;
+        setStatus("warn", "线上只读演示数据（data/projects.json）；本地 npm start 后可增删。");
       } else {
-        setStatus(null);
+        state.error = err.message;
+        if (state.items.length > 0) {
+          // 有旧数据就保留，只在顶部提示，不弹失败页
+          setStatus("warn", "刷新失败，下面显示的是上一次的数据。");
+        } else {
+          setStatus(null);
+        }
       }
     } finally {
       if (mySeq === seq) {
         state.loading = false;
+        applyReadonly();
         render();
       }
     }
@@ -206,6 +245,7 @@
 
   async function onAdd(event) {
     event.preventDefault();
+    if (state.readonly) return;
     if (state.adding) return;
 
     var title = els.title.value.trim();
@@ -236,12 +276,12 @@
       setStatus("error", "新增失败：" + err.message);
     } finally {
       state.adding = false;
-      els.addBtn.disabled = false;
-      els.addBtn.textContent = "新增项目";
+      applyReadonly();
     }
   }
 
   async function removeItem(id) {
+    if (state.readonly) return;
     if (state.busyId) return;
     if (!window.confirm("确定删除这个项目吗？删除后无法恢复。")) return;
 
