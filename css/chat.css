@@ -481,3 +481,15 @@
     animation: none;
   }
 }
+
+/* ============ 手机端适配 ============ */
+:root { color-scheme: light; }
+
+@media (max-width: 640px) {
+  #chatInput { font-size: 16px; }
+  .chat-window { height: 48dvh; min-height: 260px; padding: 12px; }
+  .bubble-meta, .input-hint, .chat-footnote { font-size: 12px; }
+  .message-text { font-size: 15px; }
+}
+
+.chat-compose { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
