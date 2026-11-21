@@ -12,6 +12,8 @@
   "use strict";
 
   var MAX_INPUT = 2000;
+  var CHAT_KEY = "node9.chat.v1";        // 本轮对话（sessionStorage）
+  var DRAFT_KEY = "node9.chat.draft.v1"; // 输入框草稿
 
   var cfg = window.APP_CONFIG || {};
   var apiBase = String(cfg.API_BASE || "").replace(/\/+$/, "");
@@ -88,8 +90,111 @@
   }
 
   function updateInputHint() {
+    var len = els.input.value.length;
     els.inputHint.textContent =
-      "Enter 发送 · Shift + Enter 换行 · " + els.input.value.length + "/" + MAX_INPUT;
+      "Enter 发送 · Shift + Enter 换行 · " + len + "/" + MAX_INPUT;
+    els.inputHint.classList.toggle("is-near-limit", len > MAX_INPUT * 0.95);
+  }
+
+  // ---------- 富文本：只处理 ``` 代码块和 `行内代码`，其余保持纯文本 ----------
+  function escapeHtml(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function renderRich(text) {
+    var safe = escapeHtml(text);
+    safe = safe.replace(/```[a-zA-Z0-9_+-]*\n?([\s\S]*?)```/g, function (_, code) {
+      return '<pre class="code-block"><code>' + code.replace(/\n$/, "") + "</code></pre>";
+    });
+    safe = safe.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    return safe;
+  }
+
+  // ---------- 复制 ----------
+  function flashCopied(btn) {
+    if (!btn) return;
+    var old = btn.getAttribute("data-label") || "复制";
+    btn.setAttribute("data-label", old);
+    btn.textContent = "已复制";
+    setTimeout(function () { btn.textContent = old; }, 1200);
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.left = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  function copyText(text, btn) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        flashCopied(btn);
+      }, function () {
+        if (fallbackCopy(text)) flashCopied(btn);
+        else setStatus("复制失败，请长按选择文本。", "warn");
+      });
+      return;
+    }
+    if (fallbackCopy(text)) flashCopied(btn);
+    else setStatus("复制失败，请长按选择文本。", "warn");
+  }
+
+  // ---------- 会话持久化（sessionStorage：关掉标签页就清空） ----------
+  function saveChat() {
+    try {
+      sessionStorage.setItem(CHAT_KEY, JSON.stringify({
+        history: history,
+        meta: lastMeta
+      }));
+    } catch (e) { /* 隐私模式存不了就跳过 */ }
+  }
+
+  function restoreChat() {
+    try {
+      var raw = sessionStorage.getItem(CHAT_KEY);
+      if (!raw) return;
+      var data = JSON.parse(raw);
+      var list = data && Array.isArray(data.history) ? data.history : [];
+      list.forEach(function (m) {
+        if (!m || !m.content) return;
+        var node = appendMessage(m.role === "user" ? "user" : "assistant", m.content);
+        if (m.role !== "user") node.textEl.innerHTML = renderRich(m.content);
+        history.push({ role: m.role, content: m.content });
+      });
+      if (data.meta) lastMeta = data.meta;
+    } catch (e) { /* 数据坏了就当没存过 */ }
+  }
+
+  function saveDraft() {
+    try { sessionStorage.setItem(DRAFT_KEY, els.input.value); } catch (e) { /* 忽略 */ }
+  }
+
+  function restoreDraft() {
+    try {
+      var draft = sessionStorage.getItem(DRAFT_KEY);
+      if (draft) els.input.value = draft;
+    } catch (e) { /* 忽略 */ }
+  }
+
+  function autoGrow() {
+    if (!els.input) return;
+    els.input.style.height = "auto";
+    els.input.style.height = Math.min(els.input.scrollHeight, 180) + "px";
   }
 
   function scrollToBottom(force) {
@@ -136,6 +241,19 @@
 
     bubble.appendChild(messageText);
     bubble.appendChild(meta);
+
+    if (role !== "user") {
+      var copyBtn = document.createElement("button");
+      copyBtn.type = "button";
+      copyBtn.className = "msg-copy";
+      copyBtn.textContent = "复制";
+      copyBtn.setAttribute("data-label", "复制");
+      copyBtn.addEventListener("click", function () {
+        copyText(messageText.textContent, copyBtn);
+      });
+      bubble.appendChild(copyBtn);
+    }
+
     row.appendChild(avatar);
     row.appendChild(bubble);
     els.window.appendChild(row);
@@ -380,6 +498,7 @@
     appendMessage("user", text);
     history.push({ role: "user", content: text });
     updateBadge(lastMeta);
+    saveChat();
 
     var assistant = appendMessage("assistant", "");
     assistant.row.classList.add("is-streaming");
@@ -462,10 +581,12 @@
       }
 
       assistant.row.classList.remove("is-streaming");
+      assistant.textEl.innerHTML = renderRich(assistantText);
       history.push({ role: "assistant", content: assistantText });
       lastMeta = metaForTurn || lastMeta;
       updateBadge(lastMeta);
       setStatus("");
+      saveChat();
     } catch (err) {
       assistant.row.classList.remove("is-streaming");
       if (dropPendingUser()) lastMeta = null;
@@ -512,6 +633,10 @@
 
     history = [];
     lastMeta = null;
+    try {
+      sessionStorage.removeItem(CHAT_KEY);
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch (e) { /* 忽略 */ }
     setStatus("");
     resetToolLog();
     while (els.window.children.length > 1) {
@@ -520,6 +645,7 @@
     updateBadge(null);
     els.input.value = "";
     updateInputHint();
+    autoGrow();
     els.input.focus();
   }
 
@@ -534,7 +660,11 @@
     });
   }
 
-  els.input.addEventListener("input", updateInputHint);
+  els.input.addEventListener("input", function () {
+    updateInputHint();
+    autoGrow();
+    saveDraft();
+  });
   els.input.addEventListener("keydown", function (event) {
     if (event.key !== "Enter" || event.shiftKey) return;
     // 中文输入法选词时按 Enter 不应该发送
@@ -543,7 +673,10 @@
     send();
   });
 
-  updateBadge(null);
+  restoreChat();
+  updateBadge(lastMeta);
+  restoreDraft();
   updateInputHint();
+  autoGrow();
   els.input.focus();
 })();
