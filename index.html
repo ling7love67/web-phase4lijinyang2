@@ -5,6 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>前端实训个人主页</title>
     <link rel="stylesheet" href="css/style.css">
+
+        <!-- 首帧底色：随 HTML 一起到达，不额外请求，避免纯白一闪 -->
+    <style>html{background:#f4f6f8}</style>
+
+    <!-- 预渲染：鼠标悬停在链接上时就开始准备目标页，点下去几乎无延迟 -->
+    <script type="speculationrules">
+      {
+        "prerender": [
+          { "where": { "href_matches": "/*" }, "eagerness": "eager" }
+        ]
+      }
+    </script>
+
 </head>
 <body class="page-home">
 <header class="site-header">

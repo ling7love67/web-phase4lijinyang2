@@ -1,7 +1,32 @@
+
+
+
+
+/* 跨文档视图过渡：换页时旧页淡出、新页淡入，不再硬切 */
+@view-transition {
+  navigation: auto;
+}
+
+html {
+  background: #f4f6f8;        /* 首帧兜底：CSS 没到之前也是浅灰，不是纯白 */
+  scrollbar-gutter: stable;   /* 滚动条常驻位置，内容长短不一时不左右跳 */
+}
+
+
 /* ============================================================
    全站样式：蓝色页头 + 白色内容区 + 方角 Tab（对齐参考截图）
    主色 #0f6cc4
    ============================================================ */
+
+/* 过渡节奏：默认 250ms 偏慢，压到 180ms 更利落 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(.2, 0, .2, 1);
+}
+
+
+
 
 * {
   margin: 0;
@@ -37,6 +62,7 @@ code {
   background: #0f6cc4;
   text-align: center;
   padding: 20px 24px 14px;
+  view-transition-name:site-header;
 }
 
 .site-header h1 {
@@ -70,12 +96,27 @@ code {
   font-weight: 700;
   border-bottom-color: #fff;
 }
+/* 点击瞬间给反馈，减少「点了没反应」的错觉 */
+.site-nav a:active {
+  opacity: .55;
+}
 
 /* ---------- 内容区 ---------- */
 
 main {
   background: #fff;
   padding: 26px 32px 36px;
+  view-transition-name: page-content;   /* 内容区独立成一个过渡组 */
+}
+
+/* 换页时：新内容从下往上浮 8px，比整块淡化更有层次 */
+::view-transition-new(page-content) {
+  animation: vt-rise 220ms cubic-bezier(.2, 0, .2, 1) both;
+}
+
+@keyframes vt-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
 }
 
 .page-title {
@@ -461,6 +502,13 @@ h3 {
   .skeleton span {
     animation: none;
   }
+
+  /* 关掉换页过渡：系统设置了「减少动态效果」就不该还动画 */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
 /* ---------- 任务清单 ---------- */
@@ -584,6 +632,13 @@ h3 {
     width: 100%;
   }
 
+    /* 竖排时 flex-basis 作用在高度上，会把输入框拉成 220px / 320px 高 */
+  #titleInput,
+  #descInput,
+  .add-area input {
+    flex: 0 0 auto;
+  }
+
   .add-area {
     flex-direction: column;
     max-width: none;
@@ -601,5 +656,44 @@ h3 {
 
   .not-found .error-code {
     font-size: 64px;
+  }
+}
+
+/* ============================================================
+   换页过渡调优（追加在文件末尾，不影响上面的任何规则）
+   ============================================================ */
+
+/* 1. 过渡节奏：180ms，比默认的 250ms 更利落 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(.2, 0, .2, 1);
+}
+
+/* 2. 内容区独立成一个过渡组：换页时轻轻上浮 */
+main {
+  view-transition-name: page-content;
+}
+
+::view-transition-new(page-content) {
+  animation: vt-rise 220ms cubic-bezier(.2, 0, .2, 1) both;
+}
+
+@keyframes vt-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 3. 导航按下即变暗：点击瞬间有反馈 */
+.site-nav a:active {
+  opacity: .55;
+}
+
+/* 4. 尊重「减少动态效果」系统设置 */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
